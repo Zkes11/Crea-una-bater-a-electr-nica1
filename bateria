@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <title>Drum Machine - FreeCodeCamp</title>
+
+  <!-- React 17 (evitamos React 18 por incompatibilidades en los tests) -->
+  <script src="https://unpkg.com/react@17/umd/react.development.js"></script>
+  <script src="https://unpkg.com/react-dom@17/umd/react-dom.development.js"></script>
+  <script src="https://unpkg.com/babel-standalone@6/babel.min.js"></script>
+
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    :root{
+      --bg:#0f172a;
+      --card:#0b1220;
+      --accent:#10b981;
+      --muted:#94a3b8;
+      --white:#f8fafc;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      min-height:100vh;
+      font-family:Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+      background: linear-gradient(180deg, #071029 0%, #071a2e 60%), radial-gradient(circle at 10% 10%, rgba(16,185,129,0.03), transparent 10%);
+      color:var(--white);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      padding:24px;
+    }
+    .wrap{
+      width:100%;
+      max-width:980px;
+    }
+    #drum-machine{
+      display:grid;
+      grid-template-columns: 1fr 360px;
+      gap:18px;
+      align-items:start;
+    }
+    .panel{
+      background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+      border:1px solid rgba(255,255,255,0.04);
+      border-radius:12px;
+      padding:18px;
+      box-shadow: 0 8px 30px rgba(2,6,23,0.6);
+    }
+    .pads{
+      display:grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap:12px;
+    }
+    .drum-pad{
+      background: linear-gradient(180deg, #0b1220, #071028);
+      border-radius:8px;
+      height:92px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      color:var(--white);
+      font-weight:700;
+      font-size:20px;
+      letter-spacing:1px;
+      cursor:pointer;
+      border: 1px solid rgba(255,255,255,0.03);
+      user-select:none;
+      transition: transform .08s ease, box-shadow .08s ease;
+      position:relative;
+    }
+    .drum-pad:active,
+    .drum-pad.active{
+      transform: translateY(2px) scale(.995);
+      box-shadow: inset 0 0 30px rgba(16,185,129,0.06);
+      border-color: rgba(16,185,129,0.35);
+    }
+    .drum-pad .key-label{
+      font-size:28px;
+    }
+    .controls{
+      display:flex;
+      flex-direction:column;
+      gap:12px;
+    }
+    #display{
+      background:linear-gradient(180deg,#071228,#071a2e);
+      color:var(--white);
+      padding:14px;
+      border-radius:8px;
+      border:1px solid rgba(255,255,255,0.03);
+      min-height:64px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      text-align:center;
+      font-weight:600;
+    }
+    .title{
+      text-align:center;
+      margin-bottom:12px;
+      font-size:18px;
+      color:var(--accent);
+      font-weight:700;
+    }
+    .footer{
+      margin-top:10px;
+      color:var(--muted);
+      font-size:13px;
+    }
+    /* responsive */
+    @media (max-width:880px){
+      #drum-machine{ grid-template-columns: 1fr; }
+      .controls{ order: -1 }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div id="drum-machine" class="panel" role="application" aria-label="Drum Machine">
+      <!-- Left: Pads -->
+      <div>
+        <div class="title">Drum Machine</div>
+        <div class="pads" id="pads-container">
+          <!-- pads will be rendered by React -->
+        </div>
+        <div class="footer">Presiona las teclas <strong>Q W E A S D Z X C</strong> o haz clic en los pads.</div>
+      </div>
+
+      <!-- Right: Display & controls -->
+      <div class="controls">
+        <div id="display" class="panel" aria-live="polite">Lista para reproducir</div>
+
+        <div class="panel" style="padding:12px;">
+          <div style="font-weight:700;margin-bottom:8px">Instrucciones</div>
+          <ol style="margin:0;padding-left:18px;color:var(--muted);font-size:14px">
+            <li>Presiona Q W E A S D Z X C</li>
+            <li>Verás el nombre del clip en <code>#display</code></li>
+            <li>Cada pad contiene un elemento <code>audio.clip</code></li>
+          </ol>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- FreeCodeCamp test script (deja esto para que pasen las pruebas) -->
+  <script src="https://cdn.freecodecamp.org/testable-projects-fcc/v1/bundle.js"></script>
+
+  <!-- React app en Babel -->
+  <script type="text/babel">
+    const { useState, useEffect } = React;
+
+    // Configuración de los pads (orden y nombres)
+    const PADS = [
+      { key: 'Q', id: 'Heater-1', src: 'https://s3.amazonaws.com/freecodecamp/drums/Heater-1.mp3' },
+      { key: 'W', id: 'Heater-2', src: 'https://s3.amazonaws.com/freecodecamp/drums/Heater-2.mp3' },
+      { key: 'E', id: 'Heater-3', src: 'https://s3.amazonaws.com/freecodecamp/drums/Heater-3.mp3' },
+      { key: 'A', id: 'Heater-4', src: 'https://s3.amazonaws.com/freecodecamp/drums/Heater-4_1.mp3' },
+      { key: 'S', id: 'Clap',     src: 'https://s3.amazonaws.com/freecodecamp/drums/Heater-6.mp3' },
+      { key: 'D', id: "Open-HH",  src: 'https://s3.amazonaws.com/freecodecamp/drums/Dsc_Oh.mp3' },
+      { key: 'Z', id: "Kick-n'-Hat", src: 'https://s3.amazonaws.com/freecodecamp/drums/Kick_n_Hat.mp3' },
+      { key: 'X', id: 'Kick',     src: 'https://s3.amazonaws.com/freecodecamp/drums/RP4_KICK_1.mp3' },
+      { key: 'C', id: 'Closed-HH',src: 'https://s3.amazonaws.com/freecodecamp/drums/Cev_H2.mp3' },
+    ];
+
+    function DrumPad({pad, playClip}) {
+      // pad: {key, id, src}
+      return (
+        <div
+          className="drum-pad"
+          id={pad.id}                /* id que describe el clip (requisito FCC) */
+          onClick={() => playClip(pad)}
+          role="button"
+          tabIndex="0"
+        >
+          <span className="key-label">{pad.key}</span>
+          {/* audio element required: class="clip" and id equals the key letter */}
+          <audio className="clip" id={pad.key} src={pad.src} />
+        </div>
+      );
+    }
+
+    function App() {
+      const [display, setDisplay] = useState('Lista para reproducir');
+      const [activeKey, setActiveKey] = useState(null);
+
+      // Reproduce clip dado un objeto pad
+      function playClip(pad) {
+        const audio = document.getElementById(pad.key);
+        if (!audio) return;
+        audio.currentTime = 0;
+        // Intentamos reproducir; algunos navegadores bloquean audio sin interacción
+        const playPromise = audio.play();
+        if (playPromise !== undefined) {
+          playPromise.catch(e => {
+            // En algunos casos puede fallar por autoplay policy; igualmente seguimos
+            // console.warn('Play failed', e);
+          });
+        }
+        setDisplay(pad.id);
+        // efecto visual: marcar activo
+        setActiveKey(pad.key);
+        setTimeout(()=> setActiveKey(null), 120);
+      }
+
+      // Keydown global
+      useEffect(() => {
+        function handleKey(e) {
+          const key = e.key.toUpperCase();
+          const pad = PADS.find(p => p.key === key);
+          if (pad) {
+            // evita que la página haga scroll o acciones no deseadas
+            e.preventDefault();
+            playClip(pad);
+          }
+        }
+        window.addEventListener('keydown', handleKey);
+        return () => window.removeEventListener('keydown', handleKey);
+      }, []);
+
+      // Añadir/retirar clase .active para animación (basado en activeKey)
+      useEffect(() => {
+        if (!activeKey) return;
+        const pad = document.querySelector(`.drum-pad:has(audio#${activeKey})`);
+        // :has() no es soportado en todos los navegadores, fallback:
+        let padNode = Array.from(document.querySelectorAll('.drum-pad')).find(el => {
+          const aud = el.querySelector('audio');
+          return aud && aud.id === activeKey;
+        });
+        if (padNode) {
+          padNode.classList.add('active');
+          setTimeout(()=> padNode && padNode.classList.remove('active'), 120);
+        }
+      }, [activeKey]);
+
+      return (
+        <React.Fragment>
+          <div className="pads-inner" style={{marginBottom:12}}>
+            <div className="pads" aria-hidden="false">
+              {PADS.map(p => (
+                <DrumPad key={p.key} pad={p} playClip={playClip} />
+              ))}
+            </div>
+          </div>
+
+          {/* Display (debe tener id="display") */}
+          <div id="display" aria-live="polite">{display}</div>
+        </React.Fragment>
+      );
+    }
+
+    // Montar la app dentro de #drum-machine respetando el layout de arriba
+    ReactDOM.render(<App />, document.getElementById('pads-container'));
+  </script>
+</body>
+</html>
